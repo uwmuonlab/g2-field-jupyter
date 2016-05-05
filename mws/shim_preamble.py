@@ -217,7 +217,8 @@ class FieldData:
         if id(t) == 0x0:
             print "Couldn't find TTree 't'"
             return None
-
+        
+        npoints = 1800
         phi = np.empty(t.GetEntries())
         freq = np.empty([28, t.GetEntries()])
         fid_len = np.empty([28, t.GetEntries()])
@@ -235,10 +236,17 @@ class FieldData:
                 freq[j, i] = t.freq[j]
                 fid_len[j, i] = t.len[j]
 
-        self.phi = phi
-        self.freq = freq
-        self.mp = mp
-        self.fid_len = fid_len
+        self.phi = np.linspace(0, 360, npoints, endpoint=False)
+        self.freq = np.empty([28, npoints])
+        self.fid_len = np.empty([28, npoints])        
+        self.mp = np.empty([16, npoints])
+        
+        for i in xrange(28):
+            self.freq[i] = cyclic_griddata(freq[i], phi, self.phi)
+            self.fid_len[i] = cyclic_griddata(fid_len[i], phi, self.phi)
+       
+        for i in xrange(16):
+            self.mp[i] = cyclic_griddata(mp[i], phi, self.phi)
 
 
 # Code for interactive with google sheets that contain shim data.
