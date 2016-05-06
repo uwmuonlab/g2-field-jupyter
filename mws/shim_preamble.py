@@ -242,11 +242,43 @@ class FieldData:
         self.mp = np.empty([16, npoints])
         
         for i in xrange(28):
-            self.freq[i] = cyclic_griddata(freq[i], phi, self.phi)
-            self.fid_len[i] = cyclic_griddata(fid_len[i], phi, self.phi)
+            self.freq[i] = cyclic_griddata(phi, freq[i], self.phi)
+            self.fid_len[i] = cyclic_griddata(phi, fid_len[i], self.phi)
        
         for i in xrange(16):
-            self.mp[i] = cyclic_griddata(mp[i], phi, self.phi)
+            self.mp[i] = cyclic_griddata(phi, mp[i], self.phi)
+
+            
+class FieldDataComparator:
+
+    def __init__(self, datafile0, datafile1, phi_nmr_offset=1.42):
+        d0 = FieldData(datafile0)
+        d1 = FieldData(datafile1)
+        
+        phi_min = d0.phi.min()
+        phi_max = d0.phi.max()
+
+        if phi_min < d1.phi.min():
+            phi_min = d1.phi.min()
+
+        if phi_max < d1.phi.max():
+            phi_max = d1.phi.max()
+
+        npoints = 1800
+        nprobes = 28
+        num_mp = 16
+        
+        self.phi = np.linspace(phi_min, phi_max, npoints)
+        self.freq = np.empty([nprobes, npoints])
+        self.fid_len = np.empty([nprobes, npoints])
+        self.mp = np.empty([num_mp, npoints])
+
+        for i in xrange(nprobes):
+            self.freq[i] = griddata(d1.phi, d1.freq[i], self.phi) - griddata(d0.phi, d0.freq[i], self.phi)
+            self.fid_len[i] = griddata(d1.phi, d1.fid_len[i], self.phi) - griddata(d0.phi, d0.fid_len[i], self.phi)
+
+        for i in xrange(num_mp):
+            self.mp[i] = griddata(d1.phi, d1.mp[i], self.phi) - griddata(d0.phi, d0.mp[i], self.phi)
 
 
 # Code for interactive with google sheets that contain shim data.
