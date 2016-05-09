@@ -22,6 +22,17 @@ mpl.rcParams['image.cmap'] = 'viridis'
 
 colors = sns.hls_palette(10, l=0.3, s=0.8)
 
+mp_name = {}
+mp_name[0] = 'Dipole'
+mp_name[1] = 'Normal Quadrupole'
+mp_name[2] = 'Skew Quadrupole'
+mp_name[3] = 'Normal Sextupole'
+mp_name[4] = 'Skew Sextupole'
+mp_name[5] = 'Normal Octupole'
+mp_name[6] = 'Skew Octupole'
+mp_name[7] = 'Normal Decupole'
+mp_name[8] = 'Skew Decupole'
+
 def finish_plot(ylabel=r'z [$\mu$ m]'):
     plt.xlabel(r'$\theta$ [deg]')
     plt.xlim(0, 360)
@@ -252,8 +263,13 @@ class FieldData:
 class FieldDataComparator:
 
     def __init__(self, datafile0, datafile1, phi_nmr_offset=1.42):
-        d0 = FieldData(datafile0)
-        d1 = FieldData(datafile1)
+        """Create a data object to compare to runs."""
+        if hasattr(phi_nmr_offset, '__iter__'):
+            d0 = FieldData(datafile0, phi_nmr_offset=phi_nmr_offset[0])
+            d1 = FieldData(datafile1, phi_nmr_offset=phi_nmr_offset[1])
+        else:
+            d0 = FieldData(datafile0, phi_nmr_offset=phi_nmr_offset)
+            d1 = FieldData(datafile1, phi_nmr_offset=phi_nmr_offset)
         
         phi_min = d0.phi.min()
         phi_max = d0.phi.max()
