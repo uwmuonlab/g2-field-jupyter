@@ -6,7 +6,7 @@ silly so I moved it here.
 from IPython.display import display, Markdown
 import numpy as np
 from scipy.optimize import curve_fit, lsq_linear
-from scipy.interpolate import interp1d, griddata, Akima1DInterpolator
+from scipy.interpolate import interp1d, interp2d, griddata, Akima1DInterpolator
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import ROOT as rt
@@ -65,12 +65,12 @@ def finish_plot(ylabel=r'z [$\mu$ m]'):
     plt.show()
 
 
-def draw_targets(val, target):
-    plt.axhline(val, color='k', linestyle='-', alpha=0.3)
-    plt.axhline(val + target, color='k', linestyle='--', alpha=0.2)
-    plt.axhline(val - target, color='k', linestyle='--', alpha=0.2)
-    plt.axhline(val + 2 * target, color='k', linestyle='-', alpha=0.2)
-    plt.axhline(val - 2 * target, color='k', linestyle='-', alpha=0.2)
+def draw_targets(val, target, c='k'):
+    plt.axhline(val, color=c, linestyle='-', alpha=0.3)
+    plt.axhline(val + target, color=c, linestyle='--', alpha=0.2)
+    plt.axhline(val - target, color=c, linestyle='--', alpha=0.2)
+    plt.axhline(val + 2 * target, color=c, linestyle='-', alpha=0.2)
+    plt.axhline(val - 2 * target, color=c, linestyle='-', alpha=0.2)
 
 
 def tilt_plane(phi, amp=832.173, baseline=1.059, phase=171.41):
@@ -327,6 +327,7 @@ TOP_HAT_SETTINGS_SHEET = 'Current Top Hats'
 NEW_TOP_HAT_SETTINGS_SHEET = 'Adjusted Top Hats'
 WEDGE_SETTINGS_SHEET = 'Current Wedges'
 NEW_WEDGE_SETTINGS_SHEET = 'Adjusted Wedges'
+wedge_turns_per_mm = 1.6
 
 
 def get_credentials():
@@ -358,25 +359,25 @@ def get_credentials():
     return credentials
 
 
-def get_current_top_hat_cells():
+def get_current_top_hat_cells(sheetname):
     """Loads the cells the current top hat google sheet."""
     credentials = get_credentials()
     gc = gspread.authorize(credentials)
     
     try:
-        top_hat_sheet = gc.open(SHIM_SETTINGS_SHEET).worksheet(TOP_HAT_SETTINGS_SHEET)
+        top_hat_sheet = gc.open(SHIM_SETTINGS_SHEET).worksheet(sheetname)
 
     except(gspread.WorksheetNotFound):
         print "Could not find 'Current Top Hats' worksheet.  Creating blank one."
         sh = gc.open(SHIM_SETTINGS_SHEET)
-        top_hat_sheet = sh.add_worksheet(TOP_HAT_SETTINGS_SHEET, rows="13", cols="6")
+        top_hat_sheet = sh.add_worksheet(sheetname, rows="13", cols="6")
     
     return top_hat_sheet.range('A1:F13')
 
 
-def get_current_top_hat_settings():
+def get_current_top_hat_settings(sheetname=TOP_HAT_SETTINGS_SHEET):
     """Loads and returns the current top hat settings as an array."""
-    top_hat_cells = get_current_top_hat_cells()
+    top_hat_cells = get_current_top_hat_cells(sheetname)
 
     top_hat_pos = np.zeros([12, 2])
     
@@ -389,7 +390,7 @@ def get_current_top_hat_settings():
     return top_hat_pos.reshape(24) * 0.0254
 
 
-def update_top_hat_settings(top_hat_deltas):
+def update_top_hat_settings(top_hat_deltas, sheetname=TOP_HAT_SETTINGS_SHEET):
     """Update the current positions of the top hats in the google sheet."""
     credentials = get_credentials()
     gc = gspread.authorize(credentials)
@@ -402,7 +403,7 @@ def update_top_hat_settings(top_hat_deltas):
         sh = gc.open(SHIM_SETTINGS_SHEET)
         top_hat_sheet = sh.add_worksheet(title=NEW_TOP_HAT_SETTINGS_SHEET, rows="13", cols="6")
 
-    top_hat_cells = get_current_top_hat_cells()
+    top_hat_cells = get_current_top_hat_cells(sheetname)
     new_cells = top_hat_sheet.range('A1:F13')
 
     delta = top_hat_deltas.reshape(12, 2)
@@ -431,27 +432,27 @@ def update_top_hat_settings(top_hat_deltas):
         new_cells[i].value = top_hat_cells[i].value
         
     top_hat_sheet.update_cells(new_cells)
-
     
-def get_current_wedge_cells():
+    
+def get_current_wedge_cells(sheetname):
     """Loads the cells the current wegdge shim google sheet."""
     credentials = get_credentials()
     gc = gspread.authorize(credentials)
     
     try:
-        sheet = gc.open(SHIM_SETTINGS_SHEET).worksheet(WEDGE_SETTINGS_SHEET)
+        sheet = gc.open(SHIM_SETTINGS_SHEET).worksheet(sheetname)
 
     except(gspread.WorksheetNotFound):
         print "Could not find 'Current Wedges' worksheet.  Creating blank one."
         sh = gc.open(SHIM_SETTINGS_SHEET)
-        sheet = sh.add_worksheet(WEDGE_SETTINGS_SHEET, rows="73", cols="14")
+        sheet = sh.add_worksheet(sheetname, rows="73", cols="14")
     
     return sheet.range('A1:N73')
 
 
-def get_current_wedge_settings():
+def get_current_wedge_settings(sheetname=WEDGE_SETTINGS_SHEET):
     """Loads and returns the current top hat settings as an array."""
-    wedge_cells = get_current_wedge_cells()
+    wedge_cells = get_current_wedge_cells(sheetname)
 
     wedge_pos = np.zeros([72, 12])
     
@@ -465,10 +466,10 @@ def get_current_wedge_settings():
             else:
                 wedge_pos[i, j] = float(wedge_cells[14 * i + j + 15].value)
 
-    return wedge_pos.reshape(72 * 12) * wedge_turns_per_mm
+    return wedge_pos.reshape(72 * 12) / wedge_turns_per_mm
 
-
-def update_wedge_settings(wedge_deltas):
+    
+def update_wedge_settings(wedge_deltas, sheetname=WEDGE_SETTINGS_SHEET):
     """Update the current positions of the top hats in the google sheet."""
     credentials = get_credentials()
     gc = gspread.authorize(credentials)
@@ -481,7 +482,7 @@ def update_wedge_settings(wedge_deltas):
         sh = gc.open(SHIM_SETTINGS_SHEET)
         wedge_sheet = sh.add_worksheet(title=NEW_WEDGE_SETTINGS_SHEET, rows="73", cols="14")
 
-    wedge_cells = get_current_wedge_cells()
+    wedge_cells = get_current_wedge_cells(sheetname)
     new_cells = wedge_sheet.range('A1:N73')
 
     delta = wedge_deltas.reshape([72, 12])
