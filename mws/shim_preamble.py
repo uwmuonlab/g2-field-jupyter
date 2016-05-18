@@ -322,12 +322,20 @@ APPLICATION_NAME = 'Tilt Data Cruncher'
 SEC_PER_DAY = 3600 * 24
 DATA_DIR = 'data/'
 START_DATE = "01-02-2016"
-SHIM_SETTINGS_SHEET = 'Shim Settings'
-TOP_HAT_SETTINGS_SHEET = 'Current Top Hats'
-NEW_TOP_HAT_SETTINGS_SHEET = 'Adjusted Top Hats'
-WEDGE_SETTINGS_SHEET = 'Current Wedges'
-NEW_WEDGE_SETTINGS_SHEET = 'Adjusted Wedges'
+TOP_HAT_SETTINGS_BOOK = 'Settings - Top Hats'
+TOP_HAT_SETTINGS_SHEET = 'Current'
+WEDGE_SETTINGS_BOOK = 'Settings - Wedges'
+WEDGE_SETTINGS_SHEET = 'Current'
+
 wedge_turns_per_mm = 1.6
+N_TOP_HATS = 48
+N_WEDGES = 864
+
+
+def get_gspread_session():
+    """Get an authorized handle to grab data from the google sheets."""
+    credentials = get_credentials()
+    return gspread.authorize(credentials)
 
 
 def get_credentials():
@@ -357,6 +365,110 @@ def get_credentials():
             credentials = tools.run(flow, store)
         print('Storing credentials to ' + credential_path)
     return credentials
+
+
+def upload_top_hat_changes(deltas, datafile, units='mm'):
+    """Upload the current adjustment plan to the google sheet."""
+    credentials = get_credentials()
+    gc = gspread.authorize(credentials)
+    
+    book = gc.open(TOP_HAT_SETTINGS_BOOK)
+    sheet = book.worksheet(TOP_HAT_SETTINGS_SHEET)
+
+    cells = sheet.range('A1:G49')
+
+    if len(deltas) == N_TOP_HATS / 2:
+
+        deltas = np.hstack((deltas, deltas))
+
+    if units == 'mm':
+
+        deltas /= 0.0254
+
+    elif units == 'mils':
+
+        pass
+
+    else:
+        raise ValueError("Not a recognized unit.")
+
+    cells[0].value = 'Yoke ID'
+    cells[1].value = 'Shim ID'
+    cells[2].value = 'Layer'
+    cells[3].value = 'Expected'
+    cells[4].value = 'Change'
+    cells[5].value = 'Input'
+    cells[6].value = 'Modified'
+
+    for i in xrange(1, N_TOP_HATS + 1):
+
+        cells[7 * i + 0].value = chr(ord('A') + ((i - 1) % 24) / 2)
+        cells[7 * i + 1].value = 1 + (i - 1) % 2
+
+        if i > N_TOP_HATS / 2:
+            cells[7 * i + 2].value = 'BOT'
+        else:
+            cells[7 * i + 2].value = 'TOP'
+
+        cells[7 * i + 4].value = '{:.2f}'.format(deltas[i - 1])
+        cells[7 * i + 5].value = os.path.basename(datafile)
+        cells[7 * i + 6].value = time.strftime('%m/%d/%Y')
+
+    sheet.update_cells(cells)
+
+
+def upload_wedge_changes(deltas, datafile, units='mm'):
+    """Upload the current adjustment plan to the google sheet."""
+    credentials = get_credentials()
+    gc = gspread.authorize(credentials)
+    
+    book = gc.open(WEDGE_SETTINGS_BOOK)
+    sheet = book.worksheet(WEDGE_SETTINGS_SHEET)
+
+    cells = sheet.range('A1:G865')
+
+    if len(deltas) == N_WEDGES / 2:
+
+        d = np.empty(N_WEDGES)
+        for i in xrange(N_WEDGES):
+            d[i] = deltas[i / 2]
+
+        deltas = np.array(d)
+
+    if units == 'mm':
+
+        deltas /= 1.6
+
+    elif units == 'turns':
+
+        pass
+
+    else:
+        raise ValueError("Not a recognized unit.")
+
+    cells[0].value = 'Pole ID'
+    cells[1].value = 'Shim ID'
+    cells[2].value = 'Layer'
+    cells[3].value = 'Expected'
+    cells[4].value = 'Change'
+    cells[5].value = 'Input'
+    cells[6].value = 'Modified' 
+
+    for i in xrange(1, N_WEDGES + 1):
+
+        cells[7 * i + 0].value = (i - 1) / 24 + 1
+        cells[7 * i + 1].value = 1 + ((i - 1) / 2) % 12
+
+        if i % 2 == 1:
+            cells[7 * i + 2].value = 'TOP'
+        else:
+            cells[7 * i + 2].value = 'BOT'
+
+        cells[7 * i + 4].value = '{:.2f}'.format(deltas[i - 1])
+        cells[7 * i + 5].value = os.path.basename(datafile)
+        cells[7 * i + 6].value = time.strftime('%m/%d/%Y')
+
+    sheet.update_cells(cells)
 
 
 def get_current_top_hat_cells(sheetname):
