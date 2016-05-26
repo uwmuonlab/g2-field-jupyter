@@ -110,6 +110,24 @@ def cyclic_griddata(x, y, xprime, T=360.0):
     return griddata(x, y, xprime)
 
 
+def pol1(x, a0, a1):
+    return a0 + a1 * x
+
+
+def pole3(x, c1, c2, a0, a1, a2, a3):
+    v = (a0 + c1 - a1 * 5.0 + a2 * 5.0**2 - a3 * 5.0**3) * (x < -5.0)
+    v += (a0 + c2 + a1 * 5.0 + a2 * 5.0**2 + a3 * 5.0**3) * (x > 5.0)
+    v += (a0 + a1 * x + a2 * x**2 + a3 * x**3) * (x >= -5.0) * (x <= 5.0)
+    return v
+
+
+def pole5(x, c1, c2, a0, a1, a2, a3, a4, a5):
+    v = (a0 + c1 - a1 * 5.0 + a2 * 5.0**2 - a3 * 5.0**3 + a4 * 5.0**4 - a5 * 5.0**5) * (x < -5.0)
+    v += (a0 + c2 + a1 * 5.0 + a2 * 5.0**2 + a3 * 5.0**3 + a4 * 5.0**4 + a5 * 5.0**5) * (x > 5.0)
+    v += (a0 + a1 * x + a2 * x**2 + a3 * x**3 + a4 * x**4 + a5 * x**5) * (x >= -5.0) * (x <= 5.0)
+    return v
+
+
 class RingModel:
 
     def __init__(self, rootfile, bot_tilt, bot_step, top_tilt, top_step, im_data, laser_offset=0.38):
