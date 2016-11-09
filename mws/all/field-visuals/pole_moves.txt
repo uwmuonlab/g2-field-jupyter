@@ -1,0 +1,6 @@
+file 'vid/full_scan_028_to_029_multipoles.mpg'
+file 'vid/full_scan_029_to_031_multipoles.mpg'
+file 'vid/full_scan_031_to_032_multipoles.mpg'
+file 'vid/full_scan_032_to_033_multipoles.mpg'
+file 'vid/full_scan_033_to_034_multipoles.mpg'
+

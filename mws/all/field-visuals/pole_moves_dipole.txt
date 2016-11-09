@@ -1,0 +1,7 @@
+file 'vid/full_scan_025_to_027_dipole.mpg'
+file 'vid/full_scan_027_to_028_dipole.mpg'
+file 'vid/full_scan_028_to_031_dipole.mpg'
+file 'vid/full_scan_031_to_032_dipole.mpg'
+file 'vid/full_scan_032_to_033_dipole.mpg'
+file 'vid/full_scan_033_to_034_dipole.mpg'
+

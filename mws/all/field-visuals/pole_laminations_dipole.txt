@@ -1,0 +1,8 @@
+file 'vid/full_scan_044_to_045_dipole.mpg'
+file 'vid/full_scan_046_to_047_dipole.mpg'
+file 'vid/full_scan_047_to_048_dipole.mpg'
+file 'vid/full_scan_048_to_049_dipole.mpg'
+file 'vid/full_scan_049_to_050_dipole.mpg'
+file 'vid/full_scan_050_to_051_dipole.mpg'
+file 'vid/full_scan_051_to_052_dipole.mpg'
+
