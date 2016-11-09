@@ -40,7 +40,6 @@ try:
 except:
     pass
 
-
 def finish_plot(ylabel=r'z [$\mu$ m]'):
     plt.xlabel(r'$\theta$ [deg]')
     plt.xlim(0, 360)
@@ -52,11 +51,12 @@ def finish_plot(ylabel=r'z [$\mu$ m]'):
 
         x = (i * 10.0 - 15.0 - 0.1012) % 360.0
 
-        if i % 3 == 0:
-            plt.axvline(x, linestyle='-', color='k', alpha=0.2)
+        if i < 36:
+            if i % 3 == 0:
+                plt.axvline(x, linestyle='-', color='k', alpha=0.2)
 
-        else:
-            plt.axvline(x, linestyle='--', color='k', alpha=0.2)
+            else:
+                plt.axvline(x, linestyle='--', color='k', alpha=0.2)
         
         if i is not 0:
             if i < 10:
@@ -72,13 +72,44 @@ def finish_plot(ylabel=r'z [$\mu$ m]'):
             
     plt.show()
 
+    
+def draw_ring(ylabel=r'z [$\mu$ m]', alpha=1.0):
+    plt.xlabel(r'$\theta$ [deg]')
+    plt.xlim(0, 360)
+    plt.ylabel(ylabel)
+    
+    yoke_label = ord('A')
+    
+    for i in xrange(0, 37):
+
+        x = (i * 10.0 - 15.0 - 0.1012) % 360.0
+
+        if i < 36:
+            if i % 3 == 0:
+                plt.axvline(x, linestyle='-', color='k', alpha=0.2*alpha, linewidth=2.0)
+
+            else:
+                plt.axvline(x, linestyle='--', color='k', alpha=0.2*alpha, linewidth=2.0)
+        
+        if i is not 0:
+            if i < 10:
+                s = str(i) + ' '
+            else:
+                s = str(i)
+                
+            plt.figtext(0.052 + i * (0.868 / 36.0), 0.86, s, color='k', alpha=0.4*alpha)
+            
+        if (i % 3) == 1:
+            plt.figtext(0.052 + i * (0.868 / 36.0), 0.82, chr(yoke_label), color='k', alpha=0.4*alpha)
+            yoke_label += 1
+
 
 def draw_targets(val, target, c='k'):
-    plt.axhline(val, color=c, linestyle='-', alpha=0.3)
-    plt.axhline(val + target, color=c, linestyle='--', alpha=0.2)
-    plt.axhline(val - target, color=c, linestyle='--', alpha=0.2)
-    plt.axhline(val + 2 * target, color=c, linestyle='-', alpha=0.2)
-    plt.axhline(val - 2 * target, color=c, linestyle='-', alpha=0.2)
+    plt.axhline(val, color=c, linestyle='-', linewidth=4.0, alpha=0.3)
+    plt.axhline(val + target, color=c, linestyle='--', linewidth=2.0, alpha=0.2)
+    plt.axhline(val - target, color=c, linestyle='--', linewidth=2.0, alpha=0.2)
+    plt.axhline(val + 2 * target, color=c, linestyle='-', linewidth=2.0, alpha=0.2)
+    plt.axhline(val - 2 * target, color=c, linestyle='-', linewidth=2.0, alpha=0.2)
 
 
 def tilt_plane(phi, amp=832.173, baseline=1.059, phase=171.41):
@@ -249,7 +280,6 @@ class RingModel:
         self.outer_ctec += (self.outer_lo + self.outer_up)[~np.isnan(self.outer_ctec)].mean()
     
     
-    
 class FieldData:
 
     def __init__(self, datafile, phi_nmr_offset=1.42):
@@ -273,14 +303,17 @@ class FieldData:
         
         npoints = 1800
         phi = np.empty(t.GetEntries())
+        self.time = np.empty(t.GetEntries())
         freq = np.empty([28, t.GetEntries()])
         fid_len = np.empty([28, t.GetEntries()])
         mp = np.empty([16, t.GetEntries()])
+
 
         for i in xrange(t.GetEntries()):
             t.GetEntry(i)
 
             phi[i] = (t.phi_2 - phi_nmr_offset) % 360.0
+            self.time[i] = t.sys_clock[0]
 
             for j in xrange(16):
                 mp[j, i] = t.multipole[j]
@@ -292,7 +325,7 @@ class FieldData:
         self.phi = np.linspace(0, 360, npoints, endpoint=False)
         self.freq = np.empty([28, npoints])
         self.fid_len = np.empty([28, npoints])        
-        self.mp = np.empty([16, npoints])
+        self.mp = np.empty([16, npoints])        
         
         for i in xrange(28):
             self.freq[i] = cyclic_griddata(phi, freq[i], self.phi)
@@ -300,6 +333,56 @@ class FieldData:
        
         for i in xrange(16):
             self.mp[i] = cyclic_griddata(phi, mp[i], self.phi)
+
+            
+class RawFieldData:
+
+    def __init__(self, datafile, phi_nmr_offset=1.42):
+
+        if os.path.exists(datafile):
+            f = rt.TFile(datafile)
+
+        else:
+            datadir = os.environ['G2_SHIMMING_DATA_PATH']
+            datafile = os.path.join(datadir, datafile)
+            f = rt.TFile(datafile)
+
+        if f.IsZombie():
+            print "Data is corrupted."
+            return None
+
+        t = f.Get('t')
+        if id(t) == 0x0:
+            print "Couldn't find TTree 't'"
+            return None
+        
+        npoints = 1800
+        self.phi = np.empty(t.GetEntries())
+        self.time = np.empty(t.GetEntries())
+        self.temp = np.empty(t.GetEntries())        
+        self.freq = np.empty([28, t.GetEntries()])
+        self.ferr = np.empty([28, t.GetEntries()])        
+        self.freq_zc = np.empty([28, t.GetEntries()])        
+        self.ferr_zc = np.empty([28, t.GetEntries()])        
+        self.fid_len = np.empty([28, t.GetEntries()])
+        self.mp = np.empty([16, t.GetEntries()])
+
+        for i in xrange(t.GetEntries()):
+            t.GetEntry(i)
+
+            self.phi[i] = (t.phi_2 - phi_nmr_offset) % 360.0
+            self.time[i] = t.sys_clock[0]
+            self.temp[i] = t.temp[0]
+
+            for j in xrange(16):
+                self.mp[j, i] = t.multipole[j]
+
+            for j in xrange(28):
+                self.freq[j, i] = t.freq[j]
+                # self.ferr[j, i] = t.ferr[j]
+                # self.freq_zc[j, i] = t.freq_zc[j]
+                # self.ferr_zc[j, i] = t.ferr_zc[j]                
+                self.fid_len[j, i] = t.len[j]
 
             
 class FieldDataComparator:
@@ -338,7 +421,50 @@ class FieldDataComparator:
         for i in xrange(num_mp):
             self.mp[i] = griddata(d1.phi, d1.mp[i], self.phi) - griddata(d0.phi, d0.mp[i], self.phi)
 
+class FixedProbeTree():
+    def __init__(self, run_number, fid_idx=0):
+        f = rt.TFile(os.environ['G2_SHIMMING_DATA_PATH'] + 'shim/fixed_tree_%05i.root' % run_number)
+        t = f.Get('t_fxpr')
+        self.time = np.empty(t.GetEntries())
+        self.health = np.empty([24, t.GetEntries()])
+        self.len = np.empty([24, t.GetEntries()])
+        self.freq = np.empty([24, t.GetEntries()])
+        self.trace = np.empty([24, 10000])
+        
+        for n in xrange(t.GetEntries()):
+            t.GetEntry(n)
+            self.time[n] = t.sys_clock[0] * 1e-6
+            for i in xrange(24):
+                self.health[i, n] = t.health[i]
+                if run_number < 4100:
+                    self.freq[i, n] = t.freq[i] * 10.0
+                    self.len[i, n] = t.len[i] / 10.0
+                else:
+                    self.freq[i, n] = t.freq[i]
+                    self.len[i, n] = t.len[i]
+                    
+                if n == fid_idx:
+                    for j in xrange(10000):
+                        self.trace[i, j] = t.trace[i * 10000 + j]
+                        
 
+class MetrolabTree():
+    def __init__(self, run_number):
+        f = rt.TFile(os.environ['G2_SHIMMING_DATA_PATH'] + 'shim/metrolab_tree_%05i.root' % run_number)
+        t = f.Get('t_mlab')
+        self.time = np.empty(t.GetEntries())
+        self.field = np.empty(t.GetEntries())
+        
+        for n in xrange(t.GetEntries()):
+            t.GetEntry(n)
+            self.time[n] = t.midas_time
+            self.field[n] = (t.field - 1.4513 * 61.74 / 61.79) / 1.4513 * 61.79e3
+            
+    def interpolate(self, times):
+        self.field = interp1d(self.time, self.field, 'linear', fill_value='extrapolate')(times)
+        self.time = times
+        
+print "Setting up gsheets."
 # Code for interactive with google sheets that contain shim data.
 import httplib2
 import os
@@ -677,4 +803,3 @@ def update_wedge_settings(wedge_deltas, sheetname=WEDGE_SETTINGS_SHEET):
         new_cells[i].value = wedge_cells[i].value
         
     wedge_sheet.update_cells(new_cells)
-
