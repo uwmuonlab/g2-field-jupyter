@@ -94,6 +94,7 @@ def get_extracted_filename(data_id, runtype):
 
 def finish_plot(ylabel=r'z [$\mu$ m]'):
     plt.xlabel(r'$\theta$ [deg]')
+    xlim = plt.xlim()
     plt.xlim(0, 360)
     plt.ylabel(ylabel)
     
@@ -121,6 +122,7 @@ def finish_plot(ylabel=r'z [$\mu$ m]'):
             plt.figtext(0.052 + i * (0.868 / 36.0), 0.82, chr(yoke_label), color='k', alpha=0.4)
             yoke_label += 1
             
+    plt.xlim(xlim)
     plt.show()
 
 
