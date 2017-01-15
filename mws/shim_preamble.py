@@ -464,7 +464,6 @@ class MetrolabTree():
         self.field = interp1d(self.time, self.field, 'linear', fill_value='extrapolate')(times)
         self.time = times
         
-print "Setting up gsheets."
 # Code for interactive with google sheets that contain shim data.
 import httplib2
 import os
